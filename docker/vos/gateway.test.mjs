@@ -41,6 +41,13 @@ test('sandbox asset tickets authorize only static plugin assets and expire with 
   const login=await fetch(origin+BASE+'/api/vos/login',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({access_token:'validation'})});
   assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0],{assets}=await login.json();
   const assetUrl=origin+BASE+`/plugin-assets/${assets}/signed.example/main.js`;
+  const refreshes=await Promise.all([1,2].map(i=>fetch(origin+BASE+'/api/vos/login',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({access_token:`validation-refresh-${i}`})})));
+  for(const refresh of refreshes){
+   assert.equal(refresh.status,200);
+   assert.equal(refresh.headers.get('set-cookie').split(';')[0],cookie);
+   assert.equal((await refresh.json()).assets,assets);
+  }
+  assert.equal((await fetch(origin+BASE+'/api/auth/check',{headers:{cookie}})).status,200);
   const asset=await fetch(assetUrl,{headers:{origin:'null'}});assert.equal(asset.status,200);assert.equal(asset.headers.get('access-control-allow-origin'),'*');
   assert.equal((await fetch(origin+BASE+'/api/connection/list',{headers:{origin:'null',cookie}})).status,403);
   assert.equal((await fetch(origin+BASE+'/api/connection/list',{headers:{cookie:`pgv_vos_session=${assets}`}})).status,401);

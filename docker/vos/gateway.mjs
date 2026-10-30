@@ -89,14 +89,23 @@ export function createGateway({userinfoUrl,webRoot='/app/static',schedulerBridge
             const path=pathname.slice(BASE.length);
             if(path==='/api/vos/login'){
                 if(req.method!=='POST')return reply(res,405);
-                invalidate(cookieId(req));
                 try{
                     const {access_token:token}=await jsonBody(req);
-                    await verifyAdministrator(token,userinfoUrl);
+                    const subject=await verifyAdministrator(token,userinfoUrl);
                     for(const [id,s] of sessions)if(s.expires<Date.now())invalidate(id);
-                    if(sessions.size>=500)throw Error('Session limit');
-                    const id=randomBytes(32).toString('hex'),assets=randomBytes(32).toString('hex');
-                    sessions.set(id,{token,assets,expires:Date.now()+43200000,sockets:new Set()});
+                    // VOS may mount the same keep-alive page more than once. Refresh
+                    // the verified identity in place so parallel frames cannot revoke
+                    // each other's in-flight requests or sandbox asset tickets.
+                    let id=cookieId(req),session=sessions.get(id);
+                    if(!session||session.subject!==subject){
+                        invalidate(id);
+                        if(sessions.size>=500)throw Error('Session limit');
+                        id=randomBytes(32).toString('hex');
+                        session={subject,assets:randomBytes(32).toString('hex'),sockets:new Set()};
+                        sessions.set(id,session);
+                    }
+                    session.token=token;session.expires=Date.now()+43200000;
+                    const {assets}=session;
                     assetSessions.set(assets,id);
                     res.setHeader('set-cookie',`pgv_vos_session=${id}; Path=${BASE}/; HttpOnly; SameSite=Strict; Max-Age=43200${req.headers['x-forwarded-proto']==='https'?'; Secure':''}`);
                     res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});return res.end(JSON.stringify({assets}));
