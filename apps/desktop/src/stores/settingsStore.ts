@@ -3017,6 +3017,8 @@ export const useSettingsStore = defineStore("settings", () => {
     if (!activeModel.value) return false;
     const config = aiConfigs.value.find((c) => c.id === activeModel.value!.configId);
     if (!config) return false;
+    // VOS supplies the Scheduler credential through the authenticated gateway.
+    if (config.endpoint === "vos://v-scheduler") return !!activeModel.value.modelId;
     const preset = getAiProviderPreset(config.provider, config.endpoint);
     if (
       config.provider === "codex-cli" ||

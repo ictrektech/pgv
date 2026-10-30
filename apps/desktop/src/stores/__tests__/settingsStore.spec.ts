@@ -1413,6 +1413,19 @@ describe("settingsStore AI API key normalization", () => {
     setActivePinia(createPinia());
   });
 
+  it("enables Scheduler sending without a duplicate API key only after selecting a model", async () => {
+    const { useSettingsStore } = await import("@/stores/settingsStore");
+    const store = useSettingsStore();
+    store.aiConfigs = [makeTestConfig({ id: "pgv-v-scheduler", endpoint: "vos://v-scheduler", apiKey: "" })];
+    store.activeModel = { configId: "pgv-v-scheduler", modelId: "v-scheduler/chat" };
+    expect(store.isConfigured).toBe(true);
+    store.activeModel = { configId: "pgv-v-scheduler", modelId: "" };
+    expect(store.isConfigured).toBe(false);
+    store.aiConfigs = [makeTestConfig({ id: "manual", provider: "openai", endpoint: "https://api.openai.com/v1", apiKey: "" })];
+    store.activeModel = { configId: "manual", modelId: "gpt-5" };
+    expect(store.isConfigured).toBe(false);
+  });
+
   it("trims API keys before persisting new configurations", async () => {
     const saveAiConfigItem = vi.fn().mockResolvedValue(undefined);
     vi.doMock("@/lib/backend/api", () => ({
