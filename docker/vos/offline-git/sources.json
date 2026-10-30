@@ -1,0 +1,18 @@
+{
+  "postgres": {
+    "revision": "ac8ad476de59093d33ab9f294531c956e0c6a724",
+    "sha256": "5da9e2c79e41f36a137b43b516f8d26656bff9ea2b1fbc6cf522963f82cee28b"
+  },
+  "mysql": {
+    "revision": "4a9e60a62f5a48e35ef9ccc9fc8277d5012b19dd",
+    "sha256": "7f069ee3f06e3a4835d516f58da9d3f0bce7616eb0a2283bf327d6ce70da6e37"
+  },
+  "mysql-common": {
+    "revision": "47740d85a8277167a5717afac785d37b46a36296",
+    "sha256": "4bc865e5a54f0029f305710d1c1a2a2b5eb196d8898080b30331d6e97025a914"
+  },
+  "sqlite": {
+    "revision": "7f12f203b4f4694a273410bd9b02d77f82b6114e",
+    "sha256": "d1c35e0b406eb904c36bd63c2174484dd0e96e5484f5aba1d39cbba60a67285c"
+  }
+}

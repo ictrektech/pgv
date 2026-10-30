@@ -1,3 +1,4 @@
+import {isVos,pluginAssetRoot} from "@/vos/bridge";
 // The processed plugin UI document is multiple megabytes; rebuilding it per
 // workbench instance (every dock panel, every tab) re-reads the entry through
 // the bridge and re-parses it each time. Module scope is the point: the cache
@@ -50,6 +51,7 @@ export function clearPluginUiHtmlCache(): void {
 
 /** Base URL for packaged plugin UI resources on desktop hosts. */
 export function pluginUiAssetBaseUrl(pluginId: string, entryDirectory = ""): string | undefined {
+  if (isVos && pluginAssetRoot) return `${pluginAssetRoot}${encodeURIComponent(pluginId)}/${entryDirectory ? entryDirectory + "/" : ""}`;
   if (!isTauriRuntime()) return undefined;
   const origin = location.protocol === "http:" || location.protocol === "https:" ? `${location.protocol}//dbx-plugin.localhost/${pluginId}/` : `dbx-plugin://localhost/${pluginId}/`;
   return entryDirectory ? `${origin}${entryDirectory}/` : origin;

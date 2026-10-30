@@ -2228,10 +2228,10 @@ defineExpose({
       @open-source="returnFromTriggerSourceDiagnostics"
       @trigger-result="acceptTriggerSourceDiagnosticResult"
     />
-    <div v-if="activeProductionContext.active" class="production-session-strip flex h-7 shrink-0 items-center gap-2 border-b border-red-500/35 bg-red-500/10 px-3 text-xs font-semibold text-red-800 shadow-[inset_0_1px_0_rgb(239_68_68_/_0.28)] dark:text-red-200">
+    <div v-if="activeProductionContext.active" class="production-session-strip flex h-7 shrink-0 items-center gap-2 border-b border-blue-400/35 bg-blue-400/10 px-3 text-xs font-semibold text-blue-800 shadow-[inset_0_1px_0_rgb(96_165_250_/_0.28)] dark:text-blue-200">
       <ShieldAlert class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span class="font-mono uppercase tracking-normal">{{ t("production.title") }}</span>
-      <span v-if="productionSessionDetail" class="min-w-0 truncate rounded-md border border-red-500/25 bg-background/65 px-1.5 py-0.5 font-medium text-red-700 dark:text-red-200">{{ productionSessionDetail }}</span>
+      <span v-if="productionSessionDetail" class="min-w-0 truncate rounded-md border border-blue-400/25 bg-background/65 px-1.5 py-0.5 font-medium text-blue-700 dark:text-blue-200">{{ productionSessionDetail }}</span>
     </div>
     <!-- Query mode: editor + results -->
     <template v-if="activeTab.mode === 'query'">
@@ -4070,11 +4070,11 @@ defineExpose({
 }
 
 .production-session-shell--active {
-  box-shadow: inset 3px 0 0 color-mix(in oklch, var(--destructive) 78%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in oklch, #60a5fa 78%, transparent);
 }
 
 .production-session-strip {
-  background-image: linear-gradient(90deg, color-mix(in oklch, var(--destructive) 14%, transparent), color-mix(in oklch, var(--destructive) 7%, transparent));
+  background-image: linear-gradient(90deg, color-mix(in oklch, #60a5fa 14%, transparent), color-mix(in oklch, #60a5fa 7%, transparent));
 }
 
 .query-output-splitpanes :deep(> .splitpanes__splitter) {

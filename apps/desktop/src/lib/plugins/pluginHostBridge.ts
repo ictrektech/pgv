@@ -1,3 +1,4 @@
+import {isVos} from "@/vos/bridge";
 import { PLUGIN_AI_TASKS } from "./pluginAiCompletion";
 import type { PluginAiProvider, PluginAiModel, PluginAiGenerateRequest, PluginAiStreamRequest, PluginAiStreamChunkEvent, PluginAiTask } from "./pluginAiCompletion";
 import type { InstalledPlugin, PluginBinaryEvent, PluginEvent, PluginUiAssetPayload, PluginUiContribution } from "@/types/database";
@@ -1177,7 +1178,7 @@ export function pluginSandboxDocument(html: string, permissions?: readonly strin
   const connectSrc = networkOrigins.length > 0 ? `connect-src ${networkOrigins.join(" ")};` : "connect-src 'none';";
   const assetSource = pluginAssetCspSource(options?.baseUrl);
   const scriptSrc = options?.allowUnsafeEval ? "script-src 'unsafe-inline' 'unsafe-eval'" : "script-src 'unsafe-inline'";
-  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; ${scriptSrc} blob:${assetSource}; style-src 'unsafe-inline' blob:; img-src data: blob:${assetSource}; font-src data: blob:${assetSource}; ${connectSrc} media-src data: blob:${assetSource};">`;
+  const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; ${scriptSrc} blob:${assetSource}; style-src 'unsafe-inline' blob:${assetSource}; img-src data: blob:${assetSource}; font-src data: blob:${assetSource}; ${connectSrc} media-src data: blob:${assetSource};">`;
   // <base> must precede relative URLs resolved from the srcdoc itself (such as
   // inlined CSS url() references), so it leads the injection.
   const base = options?.baseUrl && assetSource ? `<base href="${escapeHtmlAttribute(options.baseUrl)}">` : "";
@@ -1201,6 +1202,13 @@ export function pluginSandboxDocument(html: string, permissions?: readonly strin
  */
 function pluginAssetCspSource(baseUrl: string | undefined): string {
   if (!baseUrl) return "";
+  if (isVos) {
+    try {
+      const url = new URL(baseUrl);
+      const path = url.pathname.match(/^\/app\/com\.ictrek\.pgv\/plugin-assets\/[a-f0-9]{64}\/[a-zA-Z0-9._-]+\//)?.[0];
+      if (url.origin === location.origin && path) return ` ${url.origin}${path}`;
+    } catch {}
+  }
   const mapped = baseUrl.match(/^(https?:\/\/dbx-plugin\.localhost)(?:\/|$)/i);
   if (mapped) return ` ${mapped[1].toLowerCase()}`;
   return /^dbx-plugin:\/\//i.test(baseUrl) ? " dbx-plugin:" : "";

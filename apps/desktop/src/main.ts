@@ -1,3 +1,4 @@
+import {authenticateVosViewer, isVos, syncVosAppearance} from "./vos/bridge";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import "./styles/globals.css";
@@ -77,6 +78,18 @@ function installGlobalInputAttrs() {
 }
 
 async function bootstrap() {
+  if (isVos) {
+    document.title = "PGV";
+    const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (icon) icon.href = import.meta.env.BASE_URL + 'pgv-logo.svg';
+  }
+  if (isVos && location.pathname.replace(/\/+$/, '') === '/app/com.ictrek.pgv/integration-guide') {
+    const {default: Guide} = await import('./vos/Guide.vue');
+    createApp(Guide).mount('#root');
+    window.dispatchEvent(new Event('dbx:startup-ready'));
+    return;
+  }
+  await authenticateVosViewer();
   markStartupPhase("bootstrap");
   console.log("[STARTUP] frontend bootstrap begin");
 
@@ -99,7 +112,7 @@ async function bootstrap() {
   // the main window instead of booting a second time per widget.
   if (isFloatingPluginWindow()) {
     const [{ default: i18n, loadSavedLocale }, { default: PluginFloatingWindow }] = await Promise.all([import("./i18n"), import("@/components/plugins/PluginFloatingWindow.vue")]);
-    const localeReady = loadSavedLocale();
+    const localeReady = loadSavedLocale().then(() => syncVosAppearance());
     const floatingApp = createApp(PluginFloatingWindow, { localeReady });
     floatingApp.use(createPinia());
     floatingApp.use(i18n);
@@ -112,7 +125,7 @@ async function bootstrap() {
   }
   const [{ default: i18n, loadSavedLocale }, { default: App }] = await Promise.all([import("./i18n"), import("./StartupGate.vue")]);
   console.log("[STARTUP] frontend modules loaded");
-  const localeReady = loadSavedLocale();
+  const localeReady = loadSavedLocale().then(() => syncVosAppearance());
   const app = createApp(App, { localeReady });
   app.use(createPinia());
   app.use(i18n);

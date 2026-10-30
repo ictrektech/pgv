@@ -16,6 +16,8 @@ export function isCliProvider(provider: AiConfig["provider"] | undefined): boole
 }
 
 export function isAiConfigModelCandidate(config: AiConfig, requiresApiKey: boolean, supportsCliProviders = true): boolean {
+  // The VOS gateway supplies the current session credential server-side.
+  if (config.endpoint === "vos://v-scheduler") return true;
   // CLI providers resolve their model and credentials externally, so keep the existing eligibility bypass.
   if (CLI_PROVIDERS.has(config.provider)) return supportsCliProviders;
   return !!config.endpoint?.trim() && (!requiresApiKey || !!config.apiKey?.trim());

@@ -9,7 +9,7 @@ const watermarkText = computed(() => (locale.value.startsWith("zh") ? "生产环
 <template>
   <div class="production-watermark pointer-events-none absolute inset-0 z-10 select-none" aria-hidden="true">
     <div class="production-watermark__grid">
-      <span v-for="index in 4" :key="index" class="production-watermark__label whitespace-nowrap font-mono font-extrabold text-red-700/[0.12] dark:text-red-200/[0.1]">{{ watermarkText }}</span>
+      <span v-for="index in 4" :key="index" class="production-watermark__label whitespace-nowrap font-mono font-extrabold text-blue-700/[0.12] dark:text-blue-200/[0.1]">{{ watermarkText }}</span>
     </div>
   </div>
 </template>

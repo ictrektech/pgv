@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import {isVos} from "@/vos/bridge";
 import { blockingDesktopAiRunsForUpdate } from "@/lib/ai/desktopAiRunRegistry";
 import { setupUpdatePreparation, prepareUpdateWithDraftRecovery, isUpdatePreparationActive, UpdatePreparationError } from "@/lib/app/updatePreparation";
 import { describeConfigUpdateBlock, type UpdateBlockingConfigState, type UpdateConfigTranslator } from "@/lib/app/updatePreparationSurfaces";
@@ -5092,6 +5093,13 @@ async function initApp() {
         if (attempt >= connectionLoadAttempts) throw error;
         console.warn(`[STARTUP] connectionStore.initFromDisk failed (attempt ${attempt}/${connectionLoadAttempts}), retrying`, error);
         await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+      }
+    }
+    if (isVos) {
+      for (const config of connectionStore.connections.filter(c => ['pgv-postgres', 'pgv-redis'].includes(c.id) || ['PGV PostgreSQL','PGV Redis'].includes(c.name))) {
+        if (!connectionStore.connectedIds.has(config.id)) {
+          try { await connectionStore.connect(config); } catch { /* The store displays each connection error independently. */ }
+        }
       }
     }
     markStartupPhase("connections-ready");

@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+**/node_modules
+dist
+target
+**/target
+*.log
+.env*
+ictrek.app/dist
+pgv/build
