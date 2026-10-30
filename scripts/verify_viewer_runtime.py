@@ -101,7 +101,7 @@ compose = {
         'postgres': {'image': args.postgres_image, 'environment': {
             'POSTGRES_PASSWORD': password, 'POSTGRES_USER': 'postgres', 'POSTGRES_DB': 'postgres'},
             'networks': {'default': {'aliases': ['pgv']}},
-            'healthcheck': {'test': ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U postgres'], 'interval': '2s', 'retries': 30}},
+            'healthcheck': {'test': ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U postgres'], 'interval': '2s', 'start_period': '90s', 'retries': 60}},
         'redis': {'image': args.redis_image, 'command': ['redis-server', '--requirepass', password],
                   'networks': {'default': {'aliases': ['pgv-redis']}}},
         'userinfo': {'image': args.image, 'entrypoint': ['node', '/userinfo.mjs'],
@@ -187,7 +187,9 @@ try:
         print('CONFIG='+str(config))
 finally:
     if not succeeded:
-        (root/'viewer.log').write_text(docker(*cmd,'logs','--no-color','viewer'))
-        print('Failure logs: '+str(root/'viewer.log'))
+        failure_log = root/'services.log'
+        failure_log.write_text(docker(*cmd,'logs','--no-color'))
+        os.chmod(failure_log, 0o600)
+        print('Failure logs: '+str(failure_log))
     if not args.keep_for_ui or not succeeded:
         docker(*cmd,'down','-v','--remove-orphans')
