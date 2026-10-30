@@ -42,3 +42,5 @@ Postgres 管理密码使用 VOS 注入的 `VOS_POSTGRES_PASSWORD`；Redis 使用
 ## AI SQL 与 V-Scheduler
 
 AI 助手自动提供 V-Scheduler 配置，下拉列出当前 VOS 账号可见的语言模型，可刷新后选择。无需再填写模型 API Key；生成、解释、优化和修复 SQL 仍通过 DBX 原生 AI 与 SQL 安全检查执行，调用经过 Scheduler 的鉴权、排队与额度控制。未安装 Scheduler 时，数据库和接入指南仍可使用，原有手动 AI 提供方配置也保留。
+
+发送问题前先选择数据库连接。原生助手会使用工具调用，因此所选模型还需支持 tools；仅支持文本补全的小模型可能返回“不支持工具”错误。调度排队超时会显示上游 429，可等待资源释放或选择其他支持工具的模型，PGV 不绕过调度限制。
