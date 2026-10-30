@@ -123,10 +123,10 @@ export function createGateway({userinfoUrl,webRoot='/app/static',schedulerBridge
                 }
                 if(path==='/api/ai/configs'&&req.method==='GET'){
                     const configs=await backendApi('ai/configs');
-                    let models=[];
-                    try{models=await discoverScheduler(identity.token);}catch{}
                     res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});
-                    return res.end(JSON.stringify([...configs.filter(c=>c.id!=='pgv-v-scheduler'),managedConfig(models)]));
+                    // Discovery belongs to the model picker. Manual providers must
+                    // remain available without waiting for an optional Scheduler.
+                    return res.end(JSON.stringify([...configs.filter(c=>c.id!=='pgv-v-scheduler'),managedConfig([])]));
                 }
                 let rewritten;
                 const aiPaths=['/api/ai/complete','/api/ai/stream','/api/ai/agent-stream','/api/ai/models','/api/ai/model-effort','/api/ai/test-connection'];

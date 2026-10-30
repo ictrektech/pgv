@@ -92,7 +92,7 @@ function configPayload(config: AiConfigItem, modelId = config.model): AiConfigIt
 async function loadModels(config: AiConfigItem, force = false): Promise<AiModelInfo[]> {
   const signature = configSignature(config);
   const current = catalogs.get(config.id);
-  if (!force && current?.status === "ready" && current.signature === signature && fresh(current.loadedAt)) {
+  if (config.endpoint !== "vos://v-scheduler" && !force && current?.status === "ready" && current.signature === signature && fresh(current.loadedAt)) {
     return current.models;
   }
 

@@ -72,7 +72,9 @@ export function aiConfigToItem(config: AiConfig, id: string, name: string): AiCo
  * discovery endpoint. Some OpenAI-compatible providers intentionally do not
  * expose `/models`, so their saved models must remain selectable on their own.
  */
-export function aiModelOptions(config: Pick<AiConfig, "model" | "models">, discovered: AiModelInfo[]): AiModelInfo[] {
+export function aiModelOptions(config: Pick<AiConfig, "model" | "models"> & Partial<Pick<AiConfig, "endpoint">>, discovered: AiModelInfo[]): AiModelInfo[] {
+  // Scheduler owns this catalog: removed models must not survive in saved IDs.
+  if (config.endpoint === "vos://v-scheduler") return discovered;
   const saved: AiModelInfo[] = [
     config.model.trim() ? { id: config.model.trim() } : null,
     ...(config.models ?? []).map((model) => ({

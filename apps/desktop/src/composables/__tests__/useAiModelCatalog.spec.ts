@@ -34,6 +34,22 @@ describe("useAiModelCatalog", () => {
     apiMock.aiResolveModelEffort.mockReset();
   });
 
+  it("refreshes optional Scheduler models without the manual-provider cache, including removals and recovery", async () => {
+    const scheduler = { ...config("pgv-v-scheduler"), endpoint: "vos://v-scheduler", apiKey: "" };
+    apiMock.aiListModels.mockRejectedValueOnce(new Error("Scheduler not installed"));
+    await expect(catalog.loadModels(scheduler)).rejects.toThrow("Scheduler not installed");
+    apiMock.aiListModels.mockResolvedValueOnce([{ id: "old" }]).mockResolvedValueOnce([{ id: "new" }]).mockResolvedValueOnce([]);
+    await expect(catalog.loadModels(scheduler)).resolves.toEqual([{ id: "old" }]);
+    await expect(catalog.loadModels(scheduler)).resolves.toEqual([{ id: "new" }]);
+    await expect(catalog.loadModels(scheduler)).resolves.toEqual([]);
+    expect(catalog.catalogs.get(scheduler.id)?.models).toEqual([]);
+
+    apiMock.aiListModels.mockResolvedValue([{ id: "manual-provider" }]);
+    await catalog.loadModels(config());
+    await catalog.loadModels(config());
+    expect(apiMock.aiListModels).toHaveBeenCalledTimes(5);
+  });
+
   it("deduplicates concurrent model requests and removes duplicate model IDs", async () => {
     apiMock.aiListModels.mockResolvedValue([
       { id: "gpt-5.6", displayName: "GPT 5.6" },

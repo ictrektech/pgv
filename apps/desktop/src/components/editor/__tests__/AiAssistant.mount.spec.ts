@@ -5,7 +5,7 @@
 // `immediate` default-selection watcher runs during setup. That path once read
 // `boundConnection` before it was declared, and the TDZ ReferenceError kept the
 // panel from opening at all.
-import { createApp, h, ref } from "vue";
+import { createApp, h, nextTick, ref } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPinia } from "pinia";
 import i18n from "@/i18n";
@@ -286,6 +286,45 @@ async function mountPanel(aiConfigLoaded: boolean, connection?: ConnectionConfig
 }
 
 describe("AiAssistant mount", () => {
+  it("refreshes an open Scheduler picker within 15 seconds without polling manual providers", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    const visible = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+    const api = await import("@/lib/backend/api");
+    let models = [{ id: "scheduler-old" }];
+    const list = vi.spyOn(api, "aiListModels").mockImplementation(async (config) => config.endpoint === "vos://v-scheduler" ? models : [{ id: "manual-model" }]);
+    try {
+      const { container, errors } = await mountPanel(true, undefined, (settings) => {
+        const base = { provider: "openai-compatible" as const, authMethod: "bearer" as const, apiStyle: "completions" as const, isDefault: false };
+        settings.aiConfigs = [
+          { ...base, id: "pgv-v-scheduler", name: "V-Scheduler", endpoint: "vos://v-scheduler", apiKey: "", model: "removed-saved-model" },
+          { ...base, id: "poll-manual", name: "Manual", endpoint: "https://manual.example/v1", apiKey: "fixture", model: "manual-model" },
+        ];
+        settings.activeModel = { configId: "poll-manual", modelId: "manual-model" };
+      });
+      const trigger = container.querySelector<HTMLButtonElement>(".ai-model-selector-trigger")!;
+      trigger.click();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(container.querySelector('[data-model-id="scheduler-old"]')).not.toBeNull();
+      expect(container.querySelector('[data-model-id="removed-saved-model"]')).toBeNull();
+      models = [{ id: "scheduler-new" }];
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(container.querySelector('[data-model-id="scheduler-old"]')).toBeNull();
+      expect(container.querySelector('[data-model-id="scheduler-new"]')).not.toBeNull();
+      expect(container.querySelector('[data-model-id="manual-model"]')).not.toBeNull();
+      expect(list.mock.calls.filter(([config]) => config.id === "poll-manual")).toHaveLength(1);
+      trigger.click();
+      await nextTick();
+      const calls = list.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(list).toHaveBeenCalledTimes(calls);
+      expect(errors.map(String)).toEqual([]);
+    } finally {
+      list.mockRestore();
+      visible.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   function skillButton(label: string): HTMLButtonElement {
     const button = [...document.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === label);
     expect(button, label).toBeDefined();

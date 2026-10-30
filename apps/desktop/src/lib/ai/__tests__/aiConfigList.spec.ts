@@ -24,6 +24,11 @@ describe("generateId", () => {
 });
 
 describe("AI model options", () => {
+  it("uses the authoritative Scheduler catalog without resurrecting removed saved models", () => {
+    const config = { endpoint: "vos://v-scheduler", model: "removed", models: [{ name: "removed" }] };
+    expect(aiModelOptions(config, [{ id: "new" }])).toEqual([{ id: "new" }]);
+    expect(aiModelOptions(config, [])).toEqual([]);
+  });
   it("uses discovered or manually added models without a preset default", () => {
     const config = { model: "" };
 

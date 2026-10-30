@@ -1,6 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {sameOrigin,verifyAdministrator,seedConnections} from './gateway.mjs';
+test('PGV installation has no V-Scheduler dependency',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const manifest=await readFile(new URL('../../ictrek.app/src/manifest.yml',import.meta.url),'utf8');
+ assert.doesNotMatch(manifest,/com\.ictrek\.v-scheduler/);
+});
 test('mutations require same origin, ordinary reads may omit Origin',()=>{
  assert.equal(sameOrigin({method:'GET',headers:{host:'vos'}}),true);
  assert.equal(sameOrigin({method:'POST',headers:{host:'vos'}}),false);
@@ -29,6 +34,7 @@ test('sandbox asset tickets authorize only static plugin assets and expire with 
  const http=await import('node:http');
  const {createGateway,BASE}=await import('./gateway.mjs');
  const upstream=http.createServer((req,res)=>{
+  if(req.url===`${BASE}/api/ai/configs`){res.setHeader('content-type','application/json');return res.end(JSON.stringify([{id:'manual-provider',endpoint:'https://example.invalid/v1',apiKey:'fixture-key',model:'manual-model'}]));}
   if(!req.url.startsWith(`${BASE}/api/plugins/signed.example/ui/`)){res.writeHead(404);return res.end();}
   res.writeHead(200,{'content-type':'text/javascript'});res.end('export const signed = true;');
  });
@@ -40,6 +46,10 @@ test('sandbox asset tickets authorize only static plugin assets and expire with 
  try{
   const login=await fetch(origin+BASE+'/api/vos/login',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({access_token:'validation'})});
   assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0],{assets}=await login.json();
+  const configs=await (await fetch(origin+BASE+'/api/ai/configs',{headers:{cookie}})).json();
+  assert.deepEqual(configs[0],{id:'manual-provider',endpoint:'https://example.invalid/v1',apiKey:'fixture-key',model:'manual-model'});
+  assert.equal(configs[1].endpoint,'vos://v-scheduler');
+  assert.deepEqual(configs[1].models,[]);
   const assetUrl=origin+BASE+`/plugin-assets/${assets}/signed.example/main.js`;
   const refreshes=await Promise.all([1,2].map(i=>fetch(origin+BASE+'/api/vos/login',{method:'POST',headers:{origin,cookie,'content-type':'application/json'},body:JSON.stringify({access_token:`validation-refresh-${i}`})})));
   for(const refresh of refreshes){

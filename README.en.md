@@ -27,6 +27,6 @@ The upstream Plugin Center, signed Marketplace, checksum verification, sandboxed
 
 ## AI SQL and V-Scheduler
 
-The AI assistant exposes a managed V-Scheduler configuration and a refreshable dropdown of language models visible to the current VOS account. No duplicate API key is required. DBX retains native AI/SQL tool approvals; Scheduler owns inference routing, admission and limits. Database access works without Scheduler, and manual AI providers remain available.
+The AI assistant exposes a managed V-Scheduler configuration and a dropdown of language models visible to the current VOS account. It refreshes on every open and polls every 15 seconds while open, reflecting model additions and removals. No duplicate API key is required. DBX retains native AI/SQL tool approvals; Scheduler owns inference routing, admission and limits. PGV has no installation dependency on V-Scheduler, avoiding a cycle when Scheduler uses PGV. Database access, the guide and manually configured Claude, OpenAI, Ollama or other providers work independently. Installing Scheduler later requires no PGV reinstall: reopen the model picker to discover it.
 
 Select a database connection before sending a prompt. The native assistant uses tool calling, so the selected model must support tools; text-only small models may return an unsupported-tools error. Scheduler queue timeouts appear as upstream HTTP 429 responses. Wait for capacity or select another tool-capable model; PGV does not bypass admission limits.

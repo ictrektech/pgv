@@ -156,8 +156,9 @@ try:
     redis('SET pgv-check:viewer preserved')
     assert 'preserved' in json.dumps(redis('GET pgv-check:viewer'))
     ai_config=next(c for c in api('ai/configs') if c['id']=='pgv-v-scheduler')
-    assert ai_config['apiKey']=='' and ai_config['model']=='validation/sql'
+    assert ai_config['apiKey']==''
     assert [m['id'] for m in api('ai/models',{'config':ai_config})]==['validation/sql']
+    ai_config['model']='validation/sql'
     completion=api('ai/complete',{'request':{'config':ai_config,'systemPrompt':'Return SQL only.','messages':[{'role':'user','content':'Return SELECT 1 AS answer;'}],'maxTokens':64}})
     assert 'SELECT 1' in completion
     # No plaintext DB credentials in persistent metadata.
@@ -171,6 +172,9 @@ try:
     assert not guide_headers.get('Set-Cookie')
     assert '42' in json.dumps(query('SELECT 42 AS answer'))
     ids={c['name']:c['id'] for c in connections}
+    # Scheduler can be absent/uninstalled while VOS and manual model endpoints remain available.
+    compose['services']['viewer']['environment']['PGV_SCHEDULER_URL']='http://scheduler-not-installed:8080'
+    config.write_text(json.dumps(compose))
     docker(*cmd,'up','-d','--force-recreate','viewer')
     origin = 'http://' + docker(*cmd,'port','viewer','8081')
     ready(origin+'/healthz')
@@ -178,9 +182,18 @@ try:
     cookie=headers['Set-Cookie'].split(';')[0]
     assert ids=={c['name']:c['id'] for c in api('connection/list')}
     assert 'preserved' in json.dumps(redis('GET pgv-check:viewer'))
+    manual={**ai_config,'id':'manual-validation','name':'Manual provider','endpoint':'http://userinfo:8080/v1','apiKey':'validation-admin','isDefault':True}
+    api('ai/config-item',{'config':manual})
+    retained=next(c for c in api('ai/configs') if c['id']==manual['id'])
+    assert retained['endpoint']==manual['endpoint'] and retained['isDefault']
+    standalone=api('ai/complete',{'request':{'config':manual,'systemPrompt':'Return SQL only.','messages':[{'role':'user','content':'Return SELECT 1 AS answer;'}],'maxTokens':64}})
+    assert 'SELECT 1' in standalone
+    try: api('ai/models',{'config':ai_config})
+    except HTTPError as error: assert error.code==503
+    else: raise AssertionError('Missing Scheduler unexpectedly discovered models')
     subprocess.run([sys.executable,str(Path(__file__).with_name('verify_plugin_runtime.py')),'--origin',origin],check=True)
     succeeded=True
-    print('PASS: admin auth, CSRF, managed connections, SQL/vector, Redis, encrypted persistence, recreation, static guide, native Scheduler AI')
+    print('PASS: admin auth, CSRF, managed connections, SQL/vector, Redis, encrypted persistence, recreation, static guide, optional Scheduler and standalone manual AI')
     if args.keep_for_ui:
         print('UI_ORIGIN='+origin)
         print('PROJECT='+project)

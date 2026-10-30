@@ -1591,6 +1591,7 @@ function onEditKeydown(event: KeyboardEvent, visibleIndex: number) {
 
 // Inline model selector
 const providerSelectorOpen = ref(false);
+let schedulerModelRefreshTimer: ReturnType<typeof setInterval> | undefined;
 const modelSearchQuery = ref("");
 const collapsedModelConfigIds = ref<Set<string>>(new Set());
 const effortMenuOpen = ref(false);
@@ -1712,8 +1713,16 @@ async function loadConfiguredModelCatalogs(force = false) {
 }
 
 watch(providerSelectorOpen, (open) => {
+  clearInterval(schedulerModelRefreshTimer);
+  schedulerModelRefreshTimer = undefined;
   if (open) {
     void loadConfiguredModelCatalogs();
+    schedulerModelRefreshTimer = setInterval(() => {
+      if (document.hidden) return;
+      for (const config of settings.aiConfigs) {
+        if (config.endpoint === "vos://v-scheduler") void loadModels(config, true).catch(() => {});
+      }
+    }, 15_000);
   } else {
     modelSearchQuery.value = "";
     closeEffortMenu();
@@ -6487,6 +6496,7 @@ function stopResize() {
 }
 
 onUnmounted(() => {
+  clearInterval(schedulerModelRefreshTimer);
   assistantViewMounted = false;
   // Ignore any FileReader/Tauri filesystem work that finishes after this panel is gone.
   attachmentDraftEpoch += 1;
