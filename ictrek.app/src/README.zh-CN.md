@@ -3,6 +3,9 @@
 VOS 的 PGV 分组下只有两个并列子页面：**数据库连接器**和**接入指南**。指南包含接入、建库、初始账户、配置参考和完整迁移维护文档。
 
 该应用统一提供 PostgreSQL 17、共享 Redis 和 DBX 数据管理界面。
+PostgreSQL 默认使用 400 个连接和 2048 MB 共享缓冲，可在安装配置中的
+`POSTGRES_MAX_CONNECTIONS`、`POSTGRES_SHARED_BUFFERS_MB` 调整。修改或升级参数会重启 PGV，
+依赖它的应用会短暂断开数据库连接。若原先手动配置了更高容量，请在这两个配置项中保留原值。
 在 VOS 侧边栏打开 PGV，使用 VOS 管理员登录后，PostgreSQL 与 Redis 会自动连接，
 无需手动输入数据库凭据。启动时不显示社区推广弹窗，直接进入数据库工作区。
 支持 SQL 查询、表数据浏览和 Redis 键值查看。

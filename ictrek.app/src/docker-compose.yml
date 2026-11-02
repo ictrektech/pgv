@@ -28,11 +28,11 @@ x-ictrek-pgv-base: &ictrek-pgv-base
 
 x-ictrek-pgv-arm-base: &ictrek-pgv-arm-base
   <<: *ictrek-pgv-base
-  command: ["postgres", "-c", "shared_preload_libraries=${POSTGRES_ARM_SHARED_PRELOAD_LIBRARIES:-pg_search,pg_cron,vchord.so,vectors.so,pg_ivm}"]
+  command: ["postgres", "-c", "shared_preload_libraries=${POSTGRES_ARM_SHARED_PRELOAD_LIBRARIES:-pg_search,pg_cron,vchord.so,vectors.so,pg_ivm}", "-c", "max_connections=${POSTGRES_MAX_CONNECTIONS:-400}", "-c", "shared_buffers=${POSTGRES_SHARED_BUFFERS_MB:-2048}MB"]
 
 x-ictrek-pgv-amd-base: &ictrek-pgv-amd-base
   <<: *ictrek-pgv-base
-  command: ["postgres", "-c", "shared_preload_libraries=${POSTGRES_SHARED_PRELOAD_LIBRARIES:-pg_search,pg_cron,vchord.so,vectors.so,pg_ivm}"]
+  command: ["postgres", "-c", "shared_preload_libraries=${POSTGRES_SHARED_PRELOAD_LIBRARIES:-pg_search,pg_cron,vchord.so,vectors.so,pg_ivm}", "-c", "max_connections=${POSTGRES_MAX_CONNECTIONS:-400}", "-c", "shared_buffers=${POSTGRES_SHARED_BUFFERS_MB:-2048}MB"]
 
 x-ictrek-pgv-migrate-base: &ictrek-pgv-migrate-base
   restart: "no"

@@ -12,6 +12,8 @@ VOS 下只有两个同级子页面：**数据库连接器**与**接入指南**�
 
 Postgres 管理密码使用 VOS 注入的 `VOS_POSTGRES_PASSWORD`；Redis 使用 `VOS_REDIS_PASSWORD`。预置应用账号和数据库详见[完整用户说明](ictrek.app/src/README.zh-CN.md)。Redis 不占用其他应用的 `redis` 或 `hybrag-redis` 别名。
 
+PostgreSQL 的默认容量为 400 个连接、2048 MB 共享缓冲，支持 GitLab 等共享数据库消费者。安装配置可通过 `POSTGRES_MAX_CONNECTIONS` 和 `POSTGRES_SHARED_BUFFERS_MB` 调整；参数在 PGV 重启后生效。升级会短暂中断依赖 PGV 的数据库连接；已有更高的手动参数时，应在这两个配置项中保留原值。
+
 ## 源码与发布
 
 - `pgv/`：原 PostgreSQL 镜像源码、扩展和迁移工具。

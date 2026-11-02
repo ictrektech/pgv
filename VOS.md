@@ -6,6 +6,14 @@ This repository owns `com.ictrek.pgv`: PostgreSQL 17 and extensions, dedicated s
 
 PostgreSQL remains at `pgv:5432`, aliases `ictrek-pgv` / `shared-pgv`, host port 25432. Data stays under `${VOS_APP_STORAGE_PATH}/data`; configuration stays under `config`. Application databases, roles, passwords, extensions and PG16-to-PG17 migration are preserved in `pgv/` and `ictrek.app/src/init/`.
 
+Both CPU architecture profiles now default to `max_connections=400` and `shared_buffers=2048MB`
+for GitLab and other shared consumers. `POSTGRES_MAX_CONNECTIONS` and
+`POSTGRES_SHARED_BUFFERS_MB` expose these startup parameters in VOS configuration.
+Startup arguments take precedence over manual `ALTER SYSTEM` values. Preserve higher custom
+settings in the app configuration before upgrading. These settings require a PGV restart and
+briefly disconnect dependent applications. This package-only change reuses the published
+PostgreSQL, Redis, and viewer images and does not change database schemas or stored data.
+
 Redis remains at `pgv-redis:6379`, alias `ictrek-pgv-redis`, no host port, required `VOS_REDIS_PASSWORD`, AOF every second, `noeviction`, persistent `redis/`. It never claims `redis` or `hybrag-redis`. Existing applications retain their connection configuration.
 
 ## Viewer and navigation
@@ -20,7 +28,7 @@ VOS initial and live locale/theme changes are applied before rendering the conne
 
 ## Upgrade and rollback
 
-This is a viewer-only migration: the published PGV database and Redis images are reused. Existing Tabularis metadata under `viewer/` is preserved. New DBX metadata lives under `viewer/dbx/`; saved Tabularis queries, tabs and personal connections are not automatically converted. The two managed PGV connections are recreated automatically from the existing environment. No PostgreSQL or Redis data migration is introduced.
+The published PGV database and Redis images are reused. This release changes PostgreSQL startup capacity without a schema or data migration. Existing Tabularis metadata under `viewer/` is preserved. DBX metadata lives under `viewer/dbx/`; saved Tabularis queries, tabs and personal connections are not automatically converted. The two managed PGV connections are recreated automatically from the existing environment.
 
 Before an upgrade, save the installed PGV package/version and configuration and take a normal database backup. Roll back by reinstalling the previous PGV package using the unchanged storage path; its Tabularis metadata remains intact. Do not delete `data`, `redis`, `config`, or the old `viewer` contents.
 

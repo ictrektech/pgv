@@ -3,6 +3,9 @@
 The PGV group in VOS has exactly two sibling pages: **Database Connector** and **Integration Guide**. The guide covers connection settings, database creation, initial accounts, configuration reference and complete migration/maintenance documents.
 
 PGV combines PostgreSQL 17, shared Redis and the DBX database workspace.
+PostgreSQL defaults to 400 connections and 2048 MB shared buffers, configured through
+`POSTGRES_MAX_CONNECTIONS` and `POSTGRES_SHARED_BUFFERS_MB`. Parameter changes take effect
+on PGV restart and briefly disconnect dependent apps. Preserve higher manual settings in these fields.
 Open PGV from the VOS sidebar as the VOS admin: PostgreSQL and Redis open
 automatically without entering database credentials. The workspace opens directly,
 without the community promotion dialog on startup. Use SQL queries, browse

@@ -1,4 +1,24 @@
 configs:
+  - name: POSTGRES_MAX_CONNECTIONS
+    type: integer
+    title: {zh-CN: PostgreSQL 最大连接数, en: PostgreSQL maximum connections}
+    description:
+      zh-CN: PostgreSQL 启动参数，默认 400，支持 GitLab 等共享数据库应用。修改会随 PGV 重启生效；若已有更高的手动设置，请填写原值。
+      en: PostgreSQL startup parameter, default 400, for shared consumers including GitLab. Changes take effect on PGV restart. Preserve any higher existing manual setting here.
+    default: 400
+    minimum: 100
+    maximum: 5000
+
+  - name: POSTGRES_SHARED_BUFFERS_MB
+    type: integer
+    title: {zh-CN: PostgreSQL 共享缓冲区（MB）, en: PostgreSQL shared buffers (MB)}
+    description:
+      zh-CN: 默认 2048 MB，满足 GitLab 外部 PostgreSQL 的基础要求。需要相应可用内存；启动参数优先于 ALTER SYSTEM，修改会随 PGV 重启生效。
+      en: Default 2048 MB meets the GitLab external PostgreSQL baseline. Requires available RAM. This startup parameter overrides ALTER SYSTEM and changes take effect on PGV restart.
+    default: 2048
+    minimum: 128
+    maximum: 262144
+
   - name: ICTREK_PGV_PORT
     type: integer
     title:
