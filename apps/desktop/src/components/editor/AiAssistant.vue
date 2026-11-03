@@ -41,6 +41,7 @@ const conversationSkillHintSeen = new Set<string>();
 </script>
 
 <script setup lang="ts">
+import { isVos } from "@/vos/bridge";
 import { computed, defineAsyncComponent, h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, watch, type Component } from "vue";
 import { uuid } from "@/lib/common/utils";
 import { useI18n } from "vue-i18n";
@@ -2065,6 +2066,7 @@ const agentActionButtons: AiActionButton[] = [
 
 const actionButtons = computed<AiActionButton[]>(() => (assistantMode.value === "agent" ? agentActionButtons : askActionButtons));
 const isRedisConnection = computed(() => boundConnection.value?.db_type === "redis");
+const canUseAiSqlEditor = computed(() => !isVos || boundConnection.value?.db_type === "postgres");
 
 // Vector DBs hide the action menu and only expose collection tools.
 // Keep their action at `generate` so the task contract doesn't tell the LLM to call execute_query.
@@ -4872,8 +4874,15 @@ async function send() {
         });
         if (steps.length) msg.agentSteps = steps;
       }
+      if (isVos && msg && !msg.failed && !runPluginContext && connection?.db_type === "postgres"
+          && runIsVisible() && generationCanContinue()
+          && agentEvents.some((event) => event.type === "agent_end")
+          && !agentEvents.some((event) => event.type === "output_truncated" || event.type === "error")) {
+        const sql = extractSingleSqlCodeBlock(msg.content);
+        if (sql) emit("appendSql", sql, runBinding);
+      }
       // Fallback: use aiAgentPlan for backward compatibility
-      if (msg && !hasRuntimeSteps && connection && tab) {
+      if (!isVos && msg && !hasRuntimeSteps && connection && tab) {
         const agentPlan = buildAiAgentPlan({
           mode: requestedMode,
           action: requestedAction,
@@ -5256,6 +5265,7 @@ function abandonInFlightRequest(alreadyCancelledSessionId?: string) {
 }
 
 function applySql(code: string, key: string) {
+  if (!canUseAiSqlEditor.value) return;
   if (isRedisConnection.value) {
     emit("insertRedisCommand", code, conversationBinding.value);
     return;
@@ -5267,6 +5277,7 @@ function applySql(code: string, key: string) {
 }
 
 function executeSql(code: string, key: string) {
+  if (!canUseAiSqlEditor.value) return;
   if (isRedisConnection.value) {
     emit("executeRedisCommand", code, conversationBinding.value);
     return;
@@ -5276,6 +5287,7 @@ function executeSql(code: string, key: string) {
 }
 
 function tempRunSql(code: string, key: string) {
+  if (!canUseAiSqlEditor.value) return;
   if (isRedisConnection.value) {
     emit("executeRedisCommand", code, conversationBinding.value);
     return;
@@ -7153,7 +7165,7 @@ async function openExternalUrl(url: string) {
                       <Loader2 v-if="seg.pending && isGenerating" class="h-3 w-3 animate-spin text-zinc-400" />
                       <div class="flex items-center gap-1.5">
                         <button
-                          v-if="!pluginContext && !seg.pending && seg.isSql && !isRedisConnection"
+                          v-if="canUseAiSqlEditor && !pluginContext && !seg.pending && seg.isSql && !isRedisConnection"
                           class="rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                           :title="t('ai.tempRunSql')"
                           @click="tempRunSql(seg.content, sqlBlockKey(i, j))"
@@ -7161,7 +7173,7 @@ async function openExternalUrl(url: string) {
                           <FlaskConical class="h-3.5 w-3.5" />
                         </button>
                         <button
-                          v-if="!pluginContext && !seg.pending && (seg.isSql || isRedisConnection)"
+                          v-if="canUseAiSqlEditor && !pluginContext && !seg.pending && (seg.isSql || isRedisConnection)"
                           class="rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                           :title="t('ai.executeSql')"
                           @click="executeSql(seg.content, sqlBlockKey(i, j))"
@@ -7169,7 +7181,7 @@ async function openExternalUrl(url: string) {
                           <Play class="h-3.5 w-3.5" />
                         </button>
                         <button
-                          v-if="!pluginContext && !seg.pending && (seg.isSql || isRedisConnection)"
+                          v-if="canUseAiSqlEditor && !pluginContext && !seg.pending && (seg.isSql || isRedisConnection)"
                           class="rounded p-0.5 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
                           :title="t('ai.apply')"
                           @click="applySql(seg.content, sqlBlockKey(i, j))"

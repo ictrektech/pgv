@@ -357,6 +357,9 @@ export function useSqlExecution(deps: {
       cancelEditorViewportRequest(options.editorViewportRequestId);
       return notStarted("no-tab", context.tabId);
     }
+    if (tab.id.startsWith("pgv-ai-editor-")) {
+      return doExecute(sql, sourceOffset, options);
+    }
     if (!(await ensureReadOnlyWriteAccess({ connection: context.connection, sql, source: t("production.sourceSqlEditor") }))) {
       // Compatibility denial is a policy block; ordinary unlock dismissal
       // remains cancellation. The shared guard owns the denial notification.

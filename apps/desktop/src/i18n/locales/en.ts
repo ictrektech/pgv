@@ -4624,6 +4624,7 @@ export default {
     copySql: "Copy SQL",
     copyCode: "Copy Code",
     executeSql: "Execute SQL",
+    pgvReadOnlyEditor: "AI SQL · Read-only",
     tempRunSql: "Run without modifying editor",
     copyMessage: "Copy message",
     retryMessage: "Resend this message",

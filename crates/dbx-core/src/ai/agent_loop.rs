@@ -343,7 +343,9 @@ async fn run_agent_loop_inner(
     } else {
         PluginToolSet::default()
     };
-    tools.extend(plugin_tool_set.definitions());
+    tools.extend(plugin_tool_set.definitions().into_iter().filter(|tool| {
+        !agent_tools::pgv_ai_read_only() || tool.read_only
+    }));
     let plugin_system_prompt = plugin_tool_set.prompt_section().map(|section| format!("{system_prompt}\n\n{section}"));
     let system_prompt = plugin_system_prompt.as_deref().unwrap_or(system_prompt);
     let task_contract = task_contract.cloned();
@@ -569,7 +571,10 @@ async fn run_agent_loop_inner(
         // a proposal first. Stop before dispatch so DBX can return an exact SQL
         // proposal for non-production targets, or a non-confirmable production
         // block rather than an impossible confirmation loop.
-        if let Some(sql) = unconfirmed_write_sql(&collected_tool_calls, agent_ctx.db_type, &sql_permissions) {
+        if let Some(sql) = (!agent_tools::pgv_ai_read_only())
+            .then(|| unconfirmed_write_sql(&collected_tool_calls, agent_ctx.db_type, &sql_permissions))
+            .flatten()
+        {
             let targets_production = {
                 let configs = agent_ctx.state.configs.read().await;
                 configs.get(&agent_ctx.connection_id).is_some_and(|config| {
@@ -1435,6 +1440,10 @@ where
         let outcome = match prepared {
             Err(error) => Err(plugin_tools::not_executed_result(tool_call, error)),
             Ok(prepared) if prepared.read_only => Ok(prepared),
+            Ok(_) if agent_tools::pgv_ai_read_only() => Err(plugin_tools::not_executed_result(
+                tool_call,
+                "PGV AI is read-only. This plugin tool may change data.",
+            )),
             Ok(prepared) => match agent_ctx.session_id.as_deref() {
                 None => Err(plugin_tools::not_executed_result(tool_call, PLUGIN_TOOL_APPROVAL_UNAVAILABLE)),
                 Some(session_id) => match request_tool_approval(session_id, tool_call, &prepared, on_event, cancelled)

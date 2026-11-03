@@ -3204,7 +3204,7 @@ export const useQueryStore = defineStore("query", () => {
     schema?: string,
     initialSql?: string,
     catalog?: string,
-    options: { forceNew?: boolean; activate?: boolean; forceWordWrap?: boolean; insertAfterActive?: boolean; sourceView?: boolean; reuseQueryTabByScope?: boolean; schemaQualifiesSql?: boolean } = {},
+    options: { forceNew?: boolean; activate?: boolean; forceWordWrap?: boolean; insertAfterActive?: boolean; sourceView?: boolean; reuseQueryTabByScope?: boolean; schemaQualifiesSql?: boolean; pgvAiReadOnly?: boolean } = {},
   ) {
     if (title && !options.forceNew) {
       const existing = findTabByIdentity(connectionId, database, title, mode, schema, catalog);
@@ -3229,7 +3229,7 @@ export const useQueryStore = defineStore("query", () => {
       }
     }
 
-    const id = uuid();
+    const id = options.pgvAiReadOnly ? `pgv-ai-editor-${uuid()}` : uuid();
     const dbType = useConnectionStore().getConfig(connectionId)?.db_type;
     const tab: QueryTab = {
       id,
@@ -3247,7 +3247,7 @@ export const useQueryStore = defineStore("query", () => {
       isCancelling: false,
       isExplaining: false,
       mode,
-      ...(mode === "query" ? { autoCommit: defaultAutoCommitForDbTypeWithSetting(dbType) } : {}),
+      ...(mode === "query" ? { autoCommit: options.pgvAiReadOnly || defaultAutoCommitForDbTypeWithSetting(dbType) } : {}),
     };
     if (mode === "query") tab.originalSql = initialSql ?? "";
     return registerOpenTab(tab, {
@@ -5516,7 +5516,7 @@ export const useQueryStore = defineStore("query", () => {
       switchTab(id);
       return;
     }
-    const newId = uuid();
+    const newId = original.id.startsWith("pgv-ai-editor-") ? `pgv-ai-editor-${uuid()}` : uuid();
     const newTab: QueryTab = {
       id: newId,
       title: original.title,
@@ -5647,7 +5647,7 @@ export const useQueryStore = defineStore("query", () => {
       return null;
     }
     if (tabs.value.some((t) => t.id === restoredTab.id)) {
-      restoredTab.id = uuid();
+      restoredTab.id = restoredTab.id.startsWith("pgv-ai-editor-") ? `pgv-ai-editor-${uuid()}` : uuid();
     }
 
     initializeResultAutoSave(restoredTab);
@@ -6202,7 +6202,7 @@ export const useQueryStore = defineStore("query", () => {
 
   function setAutoCommit(id: string, autoCommit: boolean) {
     const tab = tabs.value.find((t) => t.id === id);
-    if (tab) {
+    if (tab && !tab.id.startsWith("pgv-ai-editor-")) {
       if (tab.autoCommit !== autoCommit) invalidateManualTransactionTarget(tab);
       const wasManual = tab.autoCommit === false;
       if (autoCommit && wasManual && isSqlServerTransactionTab(tab) && tab.txnSessionId) {
@@ -8166,6 +8166,9 @@ export const useQueryStore = defineStore("query", () => {
     assertUpdateAllowsInteraction();
     const tab = findExecutionTab(id);
     if (!tab || !sql.trim()) return;
+    if (tab.id.startsWith("pgv-ai-editor-") && (useConnectionStore().getConfig(tab.connectionId)?.db_type !== "postgres" || tab.autoCommit === false)) {
+      throw new Error("The PGV AI editor requires a PostgreSQL connection in read-only execution mode.");
+    }
     if (tab.objectSource?.objectType === "TRIGGER" && oracleTriggerReadOptions(effectiveDatabaseTypeForConnection(useConnectionStore().getConfig(tab.connectionId)))) {
       if (options?.executionTarget || options?.targetContext) throw new Error(t("oracleTrigger.runFullDefinition"));
       await runOracleTriggerSourceAction(id, "replace", sql);
@@ -9249,7 +9252,9 @@ export const useQueryStore = defineStore("query", () => {
         useLargeValuePreview = !!meta && /^(?:BASE )?TABLE$/i.test(meta.tableType ?? "") && columnsAllowDeferredLobMarkers(meta.columns) && meta.columns.some((column) => /^(N?CLOB|BLOB)$/i.test(column.data_type.trim()));
       }
       const sourceLabelDatabase = targetDatabase || conn?.database;
-      const executionClientSessionId = options?.pagination?.clientSessionId ?? (tab.mode === "query" || tab.mode === "data" ? tabClientSessionId(tab) : undefined);
+      const executionClientSessionId = tab.id.startsWith("pgv-ai-editor-")
+        ? tabClientSessionId(tab)
+        : options?.pagination?.clientSessionId ?? (tab.mode === "query" || tab.mode === "data" ? tabClientSessionId(tab) : undefined);
       const deferLobs = conn?.db_type === "jdbc" && (tab.mode === "query" || tab.mode === "data");
       const legacyExportSource = conn
         ? {

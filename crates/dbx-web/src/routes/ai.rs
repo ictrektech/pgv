@@ -501,7 +501,7 @@ pub async fn ai_agent_stream(
     // an empty confirmed_write_sql is treated as "no confirmation" so the
     // agent cannot execute arbitrary write/DDL statements.
     let sql_permissions = dbx_core::agent_tools::confirmed_write_sql_permissions(
-        production_database,
+        production_database || dbx_core::agent_tools::pgv_ai_read_only(),
         allow_write_sql.unwrap_or(false),
         confirmed_write_sql,
     );
@@ -530,7 +530,10 @@ pub async fn ai_agent_stream(
     let sid = session_id.clone();
     let mut req_config = request.config;
     dbx_core::ai::merge_global_max_retries(&mut req_config, max_retries);
-    let req_system_prompt = request.system_prompt;
+    let mut req_system_prompt = request.system_prompt;
+    if dbx_core::agent_tools::pgv_ai_read_only() {
+        req_system_prompt.push_str("\nPGV database tools are read-only. For data or schema changes, provide SQL for manual review. Do not request permission to execute changes.");
+    }
     let req_messages = request.messages;
     let req_task_contract = request.task_contract;
     let req_max_tokens = request.max_tokens;

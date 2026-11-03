@@ -71,7 +71,18 @@ const handler=async(req,res)=>{
  }
  if(req.url==='/v1/chat/completions'){
   let body='';for await(const chunk of req)body+=chunk;
-  if(!admin||JSON.parse(body).model!=='validation/sql'){res.writeHead(401);return res.end('{}');}
+  const request=JSON.parse(body);
+  if(!admin||request.model!=='validation/sql'){res.writeHead(401);return res.end('{}');}
+  if(request.stream){
+   const alreadyCalled=request.messages.some(message=>message.role==='tool');
+   const sql=request.messages.find(message=>message.role==='user')?.content;
+   const delta=alreadyCalled
+    ? {content:'Validation complete.'}
+    : {tool_calls:[{index:0,id:'validation-call',type:'function',function:{name:'execute_query',arguments:JSON.stringify({sql})}}]};
+   res.setHeader('content-type','text/event-stream');
+   const chunk={id:'validation-stream',object:'chat.completion.chunk',model:'validation/sql',choices:[{index:0,delta,finish_reason:alreadyCalled?'stop':'tool_calls'}]};
+   return res.end('data: '+JSON.stringify(chunk)+'\\n\\ndata: [DONE]\\n\\n');
+  }
   return res.end(JSON.stringify({id:'validation-completion',object:'chat.completion',model:'validation/sql',choices:[{index:0,message:{role:'assistant',content:'SELECT 1 AS answer;'},finish_reason:'stop'}]}));
  }
  res.writeHead(admin||ordinary?200:401);
@@ -161,6 +172,34 @@ try:
     ai_config['model']='validation/sql'
     completion=api('ai/complete',{'request':{'config':ai_config,'systemPrompt':'Return SQL only.','messages':[{'role':'user','content':'Return SELECT 1 AS answer;'}],'maxTokens':64}})
     assert 'SELECT 1' in completion
+    query('CREATE TABLE pgv_ai_guard_probe (id integer PRIMARY KEY)')
+    query('INSERT INTO pgv_ai_guard_probe VALUES (42)')
+    def ai_tool(sql):
+        payload={'sessionId':secrets.token_hex(8),'connectionId':pgid,'database':'postgres',
+                 'dbType':'postgres','mode':'agent','allowWriteSql':True,'confirmedWriteSql':sql,
+                 'confirmedConnectionId':pgid,'confirmedDatabase':'postgres',
+                 'request':{'config':ai_config,'systemPrompt':'Use the execute_query tool.',
+                            'messages':[{'role':'user','content':sql}],'maxTokens':128}}
+        stream=client(origin+base+'/api/ai/agent-stream',payload,cookie=cookie,origin=origin)[2].decode()
+        events=[json.loads(line[6:]) for line in stream.splitlines() if line.startswith('data: ')]
+        return next(event for event in events if event['type']=='tool_call_end')
+    read=ai_tool('SHOW transaction_read_only')
+    assert not read['is_error'] and '| on |' in read['result']['content'], read
+    write=ai_tool('DELETE FROM pgv_ai_guard_probe')
+    assert write['is_error'] and 'PGV AI is read-only' in write['result']['content'], write
+    def ai_editor(sql, route='query/execute-multi'):
+        return api(route,{'connectionId':pgid,'database':'postgres','sql':sql,
+                          'clientSessionId':'pgv-ai-editor-validation'})
+    assert ai_editor('SHOW transaction_read_only')[0]['rows'] == [['on']]
+    assert ai_editor('SHOW transaction_read_only', 'query/execute')['rows'] == [['on']]
+    for unsafe_sql in ['DELETE FROM pgv_ai_guard_probe',
+                       'WITH deleted AS (DELETE FROM pgv_ai_guard_probe RETURNING id) SELECT * FROM deleted',
+                       "SELECT pg_read_file('/etc/passwd')", 'SELECT 1; DELETE FROM pgv_ai_guard_probe']:
+        try: ai_editor(unsafe_sql)
+        except HTTPError: pass
+        else: raise AssertionError(f'AI editor accepted unsafe SQL: {unsafe_sql}')
+    rows=query('SELECT id FROM pgv_ai_guard_probe')['rows']
+    assert len(rows)==1 and str(rows[0][0])=='42'
     # No plaintext DB credentials in persistent metadata.
     docker(*cmd,'exec','-T','viewer','node','-e',"const fs=require('fs'); const b=fs.readFileSync('/data/dbx/dbx.db'); if(b.includes(Buffer.from(process.env.PGPASSWORD)))process.exit(1);")
     for headers in [{}, {'Origin':'https://evil.invalid'}]:

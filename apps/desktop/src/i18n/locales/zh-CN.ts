@@ -4550,6 +4550,7 @@ export default withEnglishFallback({
     copySql: "复制 SQL",
     copyCode: "复制代码",
     executeSql: "立即执行",
+    pgvReadOnlyEditor: "AI SQL · 只读",
     tempRunSql: "临时运行",
     copyMessage: "复制消息",
     retryMessage: "重新发送这条消息",

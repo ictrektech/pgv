@@ -1364,6 +1364,23 @@ pub struct QueryExecutionOptions {
     pub preserve_explicit_transaction: bool,
 }
 
+fn enforce_pgv_ai_editor_policy(
+    sql: &str,
+    mut options: QueryExecutionOptions,
+) -> Result<QueryExecutionOptions, String> {
+    if crate::agent_tools::pgv_ai_read_only()
+        && options.client_session_id.as_deref().is_some_and(|id| id.starts_with("pgv-ai-editor-"))
+    {
+        if crate::sql_risk::prove_read_only_for_database(sql, DatabaseType::Postgres)
+            != crate::sql_risk::ReadProof::ProvenReadOnly
+        {
+            return Err("PGV AI editor only runs one provably read-only PostgreSQL statement at a time.".into());
+        }
+        options.execution_mode = QueryExecutionMode::PostgresReadOnlyTransaction;
+    }
+    Ok(options)
+}
+
 fn validate_query_execution_mode(
     db_type: Option<DatabaseType>,
     sql: &str,
@@ -1884,6 +1901,11 @@ async fn do_execute_typed(
     let pool_db_type = connection_database_type_for_pool_key(state, pool_key).await;
     let mysql_catalog_dialect = connection_mysql_catalog_dialect_for_pool_key(state, pool_key).await;
     let pool = state.pool_handle(pool_key).await.ok_or("Connection not found")?;
+    if options.execution_mode == QueryExecutionMode::PostgresReadOnlyTransaction
+        && !matches!(&pool, PoolKind::Postgres(_))
+    {
+        return Err("Read-only transaction mode requires the native PostgreSQL driver.".into());
+    }
     // Everything the driver dispatch does for this statement — pool checkout,
     // schema/search_path setup, the statement, and the post-statement cleanup —
     // is what the user actually waited for. Report that span instead of the
@@ -3125,6 +3147,7 @@ async fn execute_sql_statement_with_options_typed_inner(
         return Err(MONGO_SHELL_COMMAND_HINT.into());
     }
 
+    let options = enforce_pgv_ai_editor_policy(sql, options)?;
     let db_type = connection_database_type(state, connection_id).await;
     validate_query_execution_mode(db_type, sql, &options)?;
     let has_executable_sql = db_type.map_or_else(
@@ -3993,6 +4016,7 @@ async fn execute_multi_core_with_options_for_client_and_progress_typed_inner(
         return Err(MONGO_SHELL_COMMAND_HINT.into());
     }
 
+    let options = enforce_pgv_ai_editor_policy(sql, options)?;
     let db_type = connection_database_type(state, connection_id).await;
     validate_query_execution_mode(db_type, sql, &options)?;
     if options.execution_mode == QueryExecutionMode::PostgresReadOnlyTransaction {

@@ -40,7 +40,7 @@ COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
 COPY --from=frontend /src/dist /app/static
 COPY docker/vos/gateway.mjs docker/vos/scheduler.mjs docker/vos/entrypoint.sh /app/vos/
 COPY LICENSE NOTICE /usr/share/doc/dbx/
-ENV DBX_PORT=8082 DBX_BIND_ADDR=127.0.0.1 DBX_DISABLE_PASSWORD=1 DBX_DISABLE_PASSWORD_VIEWER=1 DBX_PUBLIC_BASE_PATH=/app/com.ictrek.pgv DBX_STATIC_DIR=/app/static DBX_DATA_DIR=/data/dbx DBX_BACKUP_ROOT=/data/dbx/backups HOME=/data
+ENV PGV_AI_READ_ONLY=1 DBX_PORT=8082 DBX_BIND_ADDR=127.0.0.1 DBX_DISABLE_PASSWORD=1 DBX_DISABLE_PASSWORD_VIEWER=1 DBX_PUBLIC_BASE_PATH=/app/com.ictrek.pgv DBX_STATIC_DIR=/app/static DBX_DATA_DIR=/data/dbx DBX_BACKUP_ROOT=/data/dbx/backups HOME=/data
 EXPOSE 8081
 HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=6 CMD ["curl", "-fsS", "http://127.0.0.1:8081/healthz"]
 ENTRYPOINT ["tini", "--", "/bin/sh", "/app/vos/entrypoint.sh"]

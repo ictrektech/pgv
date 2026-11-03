@@ -787,6 +787,18 @@ pub async fn execute_tool_scoped(
     db_type: &DatabaseType,
     sql_permissions: AgentSqlPermissions,
 ) -> ToolResult {
+    if pgv_ai_read_only() && tool_uses_database(&tool_call.name) {
+        let actual_type = state.configs.read().await.get(connection_id).map(|config| config.db_type);
+        if actual_type != Some(*db_type) || !matches!(db_type, DatabaseType::Postgres | DatabaseType::Redis) {
+            return ToolResult {
+                tool_call_id: tool_call.id.clone(),
+                tool_name: tool_call.name.clone(),
+                content: "PGV AI database tools require a PostgreSQL or Redis connection and run in read-only mode.".into(),
+                is_error: true,
+                explain_data: None,
+            };
+        }
+    }
     // Agent loops for different conversations may share a physical connection.
     // Lock only the database tool future; model generation and non-DB tools stay
     // concurrent. Dropping a cancelled future releases either the waiter or the
@@ -1114,6 +1126,51 @@ fn sql_matches_confirmed_write(executed_sql: &str, confirmed: &Option<String>) -
     }
 }
 
+/// Deployment policy set by PGV, independent of any client-supplied confirmation.
+pub fn pgv_ai_read_only() -> bool {
+    std::env::var("PGV_AI_READ_ONLY").as_deref() == Ok("1")
+}
+
+async fn execute_agent_sql(
+    state: &AppState,
+    connection_id: &str,
+    database: &str,
+    sql: &str,
+    schema: Option<&str>,
+    mut options: QueryExecutionOptions,
+) -> Result<QueryResult, String> {
+    if !pgv_ai_read_only() {
+        return crate::query::execute_sql_statement_with_options(
+            state, connection_id, database, sql, schema, None, options,
+        )
+        .await;
+    }
+
+    if crate::sql_risk::prove_read_only_for_database(sql, DatabaseType::Postgres)
+        != crate::sql_risk::ReadProof::ProvenReadOnly
+    {
+        return Err("PGV AI only runs provably read-only PostgreSQL statements. Review other SQL in the editor.".into());
+    }
+
+    let session_id = format!("pgv-ai-{}", uuid::Uuid::new_v4());
+    options.client_session_id = Some(session_id.clone());
+    options.execution_mode = crate::query::QueryExecutionMode::PostgresReadOnlyTransaction;
+    let result = crate::query::execute_sql_statement_with_options(
+        state, connection_id, database, sql, schema, None, options,
+    )
+    .await;
+    let cleanup = state
+        .close_client_session_pool(connection_id, (!database.is_empty()).then_some(database), &session_id)
+        .await;
+    match result {
+        Ok(result) => {
+            cleanup?;
+            Ok(result)
+        }
+        Err(error) => Err(error),
+    }
+}
+
 async fn execute_execute_query(
     tool_call: &ToolCall,
     state: &Arc<AppState>,
@@ -1156,6 +1213,9 @@ async fn execute_execute_query(
         !targets_production && risk_allowed && confirmed_sql_matches,
     );
 
+    if pgv_ai_read_only() && risk != SqlRisk::ReadOnly {
+        return Err("PGV AI is read-only. Review and run changes manually in the SQL editor.".into());
+    }
     if targets_production {
         return Err("Blocked: AI agents cannot execute writes or DDL on a production database. Return the SQL for the user to review and execute manually in DBX.".to_string());
     }
@@ -1200,15 +1260,7 @@ async fn execute_execute_query(
         client_session_id: client_session_id.map(str::to_string),
         ..Default::default()
     };
-    let result = crate::query::execute_sql_statement_with_options(
-        state,
-        connection_id,
-        database,
-        sql,
-        default_schema,
-        None,
-        options,
-    )
+    let result = execute_agent_sql(state, connection_id, database, sql, default_schema, options)
     .await?;
 
     format_query_result_as_text(&result, limit, cell_window)
@@ -1701,15 +1753,7 @@ async fn execute_explain_query(
     // Both native and generated plans use the per-call timeout policy.
     let options =
         QueryExecutionOptions { max_rows: Some(100), timeout_secs: Some(explain_timeout_secs), ..Default::default() };
-    let result = match crate::query::execute_sql_statement_with_options(
-        state,
-        connection_id,
-        database,
-        &explain_sql,
-        default_schema,
-        None,
-        options,
-    )
+    let result = match execute_agent_sql(state, connection_id, database, &explain_sql, default_schema, options)
     .await
     {
         Ok(r) => r,

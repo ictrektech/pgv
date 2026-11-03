@@ -3809,6 +3809,19 @@ function ensureQueryTabForConnection(target: AiConversationBinding, options: { m
   if (!target.connectionId) return "";
   const database = target.database || "";
   const schema = target.schema || undefined;
+  if (isVos) {
+    const connection = connectionStore.getConfig(target.connectionId);
+    if (connection?.db_type !== "postgres") return "";
+    const existing = queryStore.tabs.find((tab) =>
+      tab.id.startsWith("pgv-ai-editor-") && tab.connectionId === target.connectionId &&
+      tab.database === database && (tab.schema || undefined) === schema
+    );
+    if (existing) {
+      queryStore.switchTab(existing.id);
+      return existing.id;
+    }
+    return queryStore.createTab(target.connectionId, database, t("ai.pgvReadOnlyEditor"), "query", schema, undefined, undefined, { forceNew: true, pgvAiReadOnly: true });
+  }
   const mode = options.mode ?? settingsStore.editorSettings.aiSqlApplyTargetMode;
   const resolvedId = resolveAiSqlTargetTabId(queryStore.tabs, queryStore.activeTabId, target, mode);
   if (resolvedId !== null) return resolvedId;
@@ -3992,6 +4005,10 @@ function settleAiSqlAction(requestId: number | undefined, outcome: AiSqlActionOu
 }
 
 function onAiAppendSql(sql: string, target: AiConversationBinding, requestId?: number) {
+  if (isVos && connectionStore.getConfig(target.connectionId)?.db_type !== "postgres") {
+    settleAiSqlAction(requestId, { status: "not-started", reason: "blocked" });
+    return;
+  }
   if (routeAiRedisCommand(sql, false, target)) {
     // Redis keeps its own feedback (`ai.redisConsoleUnreachable`); this only
     // stops the block's "running" state, which no editor tab can settle.
@@ -4027,6 +4044,10 @@ function runAiGeneratedSql(sql: string, tabId: string, requestId?: number): Prom
 }
 
 function onAiExecuteSql(sql: string, target: AiConversationBinding, requestId?: number) {
+  if (isVos && connectionStore.getConfig(target.connectionId)?.db_type !== "postgres") {
+    settleAiSqlAction(requestId, { status: "not-started", reason: "blocked" });
+    return;
+  }
   if (routeAiRedisCommand(sql, true, target)) {
     settleAiSqlAction(requestId, { status: "not-started", reason: "blocked" });
     return;
@@ -4043,6 +4064,10 @@ function onAiExecuteSql(sql: string, target: AiConversationBinding, requestId?: 
 }
 
 function onAiTempRunSql(sql: string, target: AiConversationBinding, requestId?: number) {
+  if (isVos && connectionStore.getConfig(target.connectionId)?.db_type !== "postgres") {
+    settleAiSqlAction(requestId, { status: "not-started", reason: "blocked" });
+    return;
+  }
   if (routeAiRedisCommand(sql, true, target)) {
     settleAiSqlAction(requestId, { status: "not-started", reason: "blocked" });
     return;
@@ -4051,6 +4076,10 @@ function onAiTempRunSql(sql: string, target: AiConversationBinding, requestId?: 
 }
 
 function onAiRequestAutoExecuteSql(sql: string, target: AiConversationBinding) {
+  if (isVos) {
+    onAiAppendSql(sql, target);
+    return;
+  }
   if (routeAiRedisCommand(sql, true, target)) return;
   const tabId = ensureQueryTabForConnection(target);
   if (!tabId) return;
