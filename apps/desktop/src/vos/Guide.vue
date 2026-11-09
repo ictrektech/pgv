@@ -3,6 +3,8 @@ import {computed,ref} from 'vue';
 import {marked} from 'marked';
 import guideZh from './pgv-guide.zh.md?raw';
 import guideEn from './pgv-guide.en.md?raw';
+import apiZh from './pgv-api.zh.md?raw';
+import apiEn from './pgv-api.en.md?raw';
 import manualZh from '../../../../ictrek.app/src/README.zh-CN.md?raw';
 import manualEn from '../../../../ictrek.app/src/README.en.md?raw';
 import imageNotes from '../../../../pgv/README.md?raw';
@@ -15,6 +17,7 @@ const zh=ref(true),selected=ref('guide');
 void syncVosState(state=>{if(state.locale)zh.value=state.locale.toLowerCase().startsWith('zh');if(state.theme)document.documentElement.classList.toggle('dark',state.theme==='dark');});
 const documents=computed(()=>[
 {id:'guide',title:zh.value?'接入与建库':'Connect & create databases',content:zh.value?guideZh:guideEn},
+{id:'api',title:zh.value?'API 与协议参考':'API & protocol reference',content:zh.value?apiZh:apiEn},
 {id:'manual',title:zh.value?'完整用户说明':'Complete user manual',content:zh.value?manualZh:manualEn},
 {id:'images',title:zh.value?'镜像构建与发布':'Images & releases',content:imageNotes},
 {id:'migration',title:'PG16 → PG17',content:migration},

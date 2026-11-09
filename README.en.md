@@ -32,3 +32,7 @@ The AI assistant exposes a managed V-Scheduler configuration and a dropdown of l
 Select a database connection before sending a prompt. The native assistant uses tool calling, so the selected model must support tools; text-only small models may return an unsupported-tools error. Scheduler queue timeouts appear as upstream HTTP 429 responses. Wait for capacity or select another tool-capable model; PGV does not bypass admission limits.
 
 PGV AI database tools run only proven read-only PostgreSQL statements and read-only Redis commands. PostgreSQL queries use an isolated read-only transaction that is rolled back. A completed reply with one PostgreSQL SQL block is appended to a dedicated read-only query tab. You can run one proven read-only statement at a time there.
+
+## API and protocol reference
+
+Integration Guide includes a separate bilingual **API & protocol reference**: database wire protocols, VOS gateway sessions, exact common response types, error/SSE/download handling, cancellation confirmation and a read-only example. See [English source](apps/desktop/src/vos/pgv-api.en.md) and [Chinese source](apps/desktop/src/vos/pgv-api.zh.md). These source-only documentation changes reach installed apps in the next PGV release.
