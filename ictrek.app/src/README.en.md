@@ -233,3 +233,5 @@ The unified source lives in [ictrektech/pgv](https://github.com/ictrektech/pgv)
 at `apps/pgv` in VAI. Original PGV build and migration sources live in `pgv/`.
 PGV and DBX share one VOS packaging and release flow; published database
 images can be reused. Built-in PostgreSQL and Redis drivers work without downloading plugins. The DBX Plugin Center supports signed Marketplace and private-repository extensions. Existing Tabularis metadata is retained; DBX metadata uses the viewer/dbx subdirectory.
+
+On VOS with Traefik v3, opening the app root directly in a browser redirects to its VOS page. Embedded pages and API requests use their existing routes.

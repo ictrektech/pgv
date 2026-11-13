@@ -347,7 +347,7 @@ verify_package() {
   if ! printf '%s\n' "$compose_text" | grep -Fq 'PGHOST: pgv'; then
     die "docker-compose.yml provision service must connect through PGV alias pgv"
   fi
-  if ! printf '%s\n' "$compose_text" | grep -Fq 'HeadersRegexp(`Sec-Fetch-Dest`, `document`)'; then
+  if ! printf '%s\n' "$compose_text" | grep -Fq 'HeaderRegexp(`Sec-Fetch-Dest`, `document`)'; then
     die "docker-compose.yml must redirect top-level document opens to VOS hash route"
   fi
   if ! printf '%s\n' "$compose_text" | grep -Fq "${ROUTER_HASH_PATH}"; then

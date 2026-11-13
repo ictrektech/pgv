@@ -104,7 +104,7 @@ x-ictrek-pgv-viewer-base: &ictrek-pgv-viewer-base
   labels:
     - "traefik.enable=true"
     - "traefik.docker.network=vos_default"
-    - "traefik.http.routers.ictrek-pgv-top-open.rule=PathPrefix(`/app/com.ictrek.pgv`) && HeadersRegexp(`Sec-Fetch-Dest`, `document`)"
+    - "traefik.http.routers.ictrek-pgv-top-open.rule=(Path(`/app/com.ictrek.pgv`) || Path(`/app/com.ictrek.pgv/`)) && HeaderRegexp(`Sec-Fetch-Dest`, `document`)"
     - "traefik.http.routers.ictrek-pgv-top-open.priority=1000"
     - "traefik.http.routers.ictrek-pgv-top-open.service=ictrek-pgv-viewer"
     - "traefik.http.routers.ictrek-pgv-top-open.middlewares=ictrek-pgv-top-open-redirect"
